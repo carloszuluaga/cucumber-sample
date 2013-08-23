@@ -12,6 +12,15 @@ repositories {
 }
 
 dependencies {
+	providedCompile 'com.google.gwt:gwt-user:2.5.1'
+	providedCompile 'com.google.gwt:gwt-dev:2.5.1'
+
+	runtime 'com.google.gwt:gwt-servlet:2.5.1'
+	
+	compile 'com.google.gwt:gwt-user:2.5.1'
+	compile 'com.google.gwt:gwt-servlet:2.5.1'
+	compile 'com.google.gwt:gwt-dev:2.5.1'
+
     testCompile 'junit:junit:4.+'
     testCompile 'info.cukes:cucumber-jvm-deps:1.0.3'
     testCompile 'info.cukes:cucumber-picocontainer:1.1.4'
@@ -19,6 +28,7 @@ dependencies {
     testCompile 'org.picocontainer:picocontainer:2.14.3'
     testCompile 'org.seleniumhq.selenium:selenium-chrome-driver:2.34.0'
     testCompile 'org.seleniumhq.selenium:selenium-server:2.34.0'
+    testCompile 'com.googlecode.gwt-test-utils:gwt-test-utils:0.44'
 }
 
 test {
@@ -35,4 +45,61 @@ task cucumber() {
             args = ['-f', 'pretty', '--glue', 'co.com.ceiba.cucumbersample', 'src/test/resources']
         }
     }
+}
+
+task compileGwt (dependsOn: classes, type: JavaExec) {
+	ext.buildDir = "${project.buildDir}/gwt"
+	ext.extraDir = "${project.buildDir}/extra"
+ 
+	inputs.source sourceSets.main.java.srcDirs
+	inputs.dir sourceSets.main.output.resourcesDir
+	outputs.dir buildDir
+ 
+	doFirst {
+		file(buildDir).mkdirs()
+		//classpath.each { println it.name}
+	}
+ 
+	main = 'com.google.gwt.dev.Compiler'
+ 
+	classpath {
+		[
+			sourceSets.main.java.srcDirs,           // Java source
+			sourceSets.main.output.resourcesDir,    // Generated resources
+			sourceSets.main.output.classesDir,      // Generated classes
+			sourceSets.main.compileClasspath,       // Deps
+		]
+	}
+ 
+	args =
+	[
+		'co.com.ceiba.cucumbersample.gwt.Sample', // Your GWT module
+		'-war', buildDir,
+		'-logLevel', 'INFO',
+		'-localWorkers', '2',
+		'-compileReport',
+		'-extra', extraDir,
+		// '-draftCompile' // Speeds up compile with 25%
+	]
+ 
+	maxHeapSize = '256M'
+}
+ 
+war.dependsOn compileGwt
+war {
+	from compileGwt.buildDir
+}
+war.doLast {
+	ant.unzip(src: war.archivePath, dest: "./src/main/webapp")
+}
+ 
+eclipse {
+	project {
+		natures 'com.google.gwt.eclipse.core.gwtNature'
+		buildCommand 'com.google.gdt.eclipse.core.webAppProjectValidator'
+		buildCommand 'com.google.gwt.eclipse.core.gwtProjectValidator'
+	}
+	classpath {
+		containers 'com.google.gwt.eclipse.core.GWT_CONTAINER'
+	}
 }
